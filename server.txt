@@ -1,0 +1,58 @@
+from fastapi import FastAPI, UploadFile, File
+import uvicorn
+from PIL import Image
+from io import BytesIO
+import numpy as np
+import tensorflow as tf
+from tensorflow.keras.applications import MobileNetV2
+
+app = FastAPI()
+
+input_shape = (224, 224)
+
+# Cargar el modelo preentrenado MobileNetV2
+def load_model():
+    model = MobileNetV2(input_shape=input_shape + (3,), weights='imagenet')
+    return model
+
+_model = load_model()
+
+# Leer la imagen subida por el usuario
+def read_image(image_encoded):
+    pil_image = Image.open(BytesIO(image_encoded))
+    return pil_image
+
+# Preprocesar la imagen para que sea compatible con MobileNetV2
+def preprocess(image: Image.Image):
+    image = image.resize(input_shape)  # Redimensionar a 224x224
+    image = np.asfarray(image)  # Convertir a array numpy
+    image = image / 127.5 - 1.0  # Normalización
+    image = np.expand_dims(image, 0)  # Añadir la dimensión del batch
+    return image
+
+# Hacer la predicción usando el modelo cargado
+def predict(image: np.ndarray):
+    prediction = _model.predict(image)
+    return prediction
+
+@app.get('/index')
+def hello_world(name: str):
+    return {"message": f"Hello, {name}!"}
+
+@app.post('/api/predict')
+async def predict_image(file: UploadFile = File(...)):
+    # Leer el archivo que subió el usuario
+    image_bytes = await file.read()
+    image = read_image(image_bytes)
+
+    # Preprocesar la imagen
+    processed_image = preprocess(image)
+
+    # Hacer la predicción
+    prediction = predict(processed_image)
+
+    # Enviar la predicción como respuesta
+    return {"prediction": prediction.tolist()}
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)

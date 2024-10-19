@@ -1,0 +1,8 @@
+fastapi==0.95.2
+uvicorn==0.22.0
+tensorflow==2.12.0
+opencv-python==4.7.0.72
+numpy==1.23.5
+
+Para instalar todo:
+pip install -r requirements.txt
